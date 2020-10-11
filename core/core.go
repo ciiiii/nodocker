@@ -78,29 +78,25 @@ func NewImage(s string, insecure bool, account *RegistryAccount) (*Image, error)
     }
 }
 
-func Pull(imageStr string, insecure bool, account *RegistryAccount, directory string) (string, error) {
-    image, err := NewImage(imageStr, insecure, account)
-    if err != nil {
-        return "", err
-    }
-    if err := image.prepareAuth(); err != nil {
-        return "", err
-    }
-    if err := image.pull(directory); err != nil {
-        return "", err
-    }
-    return filepath.Join(directory, image.Registry, image.Repo, image.Name), nil
+func (i *Image) TargetPath(directory string) string {
+    return filepath.Join(directory, i.Registry, i.Repo, i.Name)
 }
 
-func Push(imageStr string, insecure bool, account *RegistryAccount, directory string) error {
-    image, err := NewImage(imageStr, insecure, account)
-    if err != nil {
+func (i *Image) Pull(directory string) error {
+    if err := i.prepareAuth(); err != nil {
         return err
     }
-    if err := image.prepareAuth(); err != nil {
+    if err := i.pull(directory); err != nil {
         return err
     }
-    if err := image.push(directory); err != nil {
+    return nil
+}
+
+func (i *Image) Push(directory string) error {
+    if err := i.prepareAuth(); err != nil {
+        return err
+    }
+    if err := i.push(directory); err != nil {
         return err
     }
     return nil
