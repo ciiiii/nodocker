@@ -14,7 +14,7 @@ import (
 )
 
 
-func (i *Image) pull() error {
+func (i *Image) pull(directory string) error {
     if err := i.auth("pull"); err != nil {
         return err
     }
@@ -51,7 +51,7 @@ func (i *Image) pull() error {
             }
             layerId := layer.Id
             imageLayer := manifest.FSLayers[index].BlobSum
-            layerPath := filepath.Join("./tmp", i.Registry, i.Repo, i.Name, layerId)
+            layerPath := filepath.Join(directory, i.Registry, i.Repo, i.Name, layerId)
             if _, err := os.Stat(layerPath); os.IsNotExist(err) {
                 if err := os.MkdirAll(layerPath, 0700); err != nil {
                     return err
@@ -74,7 +74,7 @@ func (i *Image) pull() error {
         if err := json.Unmarshal(resp.Body(), &manifest); err != nil {
             return err
         }
-        if err := i.handleManifestV2(&manifest); err != nil {
+        if err := i.handleManifestV2(&manifest, directory); err != nil {
             return err
         }
         break
@@ -97,7 +97,7 @@ func (i *Image) pull() error {
         if err != nil {
             return err
         }
-        if err := i.handleManifestV2(manifest); err != nil {
+        if err := i.handleManifestV2(manifest, directory); err != nil {
             return err
         }
         break
@@ -105,7 +105,7 @@ func (i *Image) pull() error {
         return fmt.Errorf("unsupported ContentType %s", typeHeader)
     }
     repositoriesBytes := []byte(fmt.Sprintf("{\n\"%s\": { \"%s\": \"%s\" }\n}", i.Name, i.Tag, imageId))
-    repositoriesPath := filepath.Join("./tmp", i.Registry, i.Repo, i.Name, "repositories")
+    repositoriesPath := filepath.Join(directory, i.Registry, i.Repo, i.Name, "repositories")
     return ioutil.WriteFile(repositoriesPath, repositoriesBytes, 0644)
 }
 
@@ -126,11 +126,11 @@ func (i *Image) fetchManifestV2(digest string) (*schema2.Manifest, error) {
     return &manifest, err
 }
 
-func (i *Image) handleManifestV2(manifest *schema2.Manifest) error {
+func (i *Image) handleManifestV2(manifest *schema2.Manifest, directory string) error {
     var layers []string
     configDigest := manifest.Config.Digest
     imageId := strings.TrimPrefix(configDigest.Encoded(), "sha256:")
-    imageConfigPath := filepath.Join("./tmp", i.Registry, i.Repo, i.Name, fmt.Sprintf("%s.json", imageId))
+    imageConfigPath := filepath.Join(directory, i.Registry, i.Repo, i.Name, fmt.Sprintf("%s.json", imageId))
     if err := i.fetchBlob(configDigest.String(), imageConfigPath); err != nil {
         return err
     }
@@ -141,7 +141,7 @@ func (i *Image) handleManifestV2(manifest *schema2.Manifest) error {
         layerMediaType := layer.MediaType
         layerDigest := layer.Digest
         layerId := hashSha256(fmt.Sprintf(`%s\n%s\n`, parentId, layerDigest))
-        layerDir := filepath.Join("./tmp", i.Registry, i.Repo, i.Name, layerId)
+        layerDir := filepath.Join(directory, i.Registry, i.Repo, i.Name, layerId)
         if _, err := os.Stat(layerDir); os.IsNotExist(err) {
             if err := os.MkdirAll(layerDir, 0700); err != nil {
                 return err
@@ -193,7 +193,7 @@ func (i *Image) handleManifestV2(manifest *schema2.Manifest) error {
     if err != nil {
         return err
     }
-    lastLayerPath := filepath.Join("./tmp", i.Registry, i.Repo, i.Name, lastLayerId, "json")
+    lastLayerPath := filepath.Join(directory, i.Registry, i.Repo, i.Name, lastLayerId, "json")
     if err := ioutil.WriteFile(lastLayerPath, lastLayerJsonBytes, 0644); err != nil {
         return err
     }
@@ -207,6 +207,6 @@ func (i *Image) handleManifestV2(manifest *schema2.Manifest) error {
     if err != nil {
         return err
     }
-    imageManifestPath := filepath.Join("./tmp", i.Registry, i.Repo, i.Name, "manifest.json")
+    imageManifestPath := filepath.Join(directory, i.Registry, i.Repo, i.Name, "manifest.json")
     return ioutil.WriteFile(imageManifestPath, imageManifestBytes, 0644)
 }
