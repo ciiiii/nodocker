@@ -22,7 +22,7 @@ func (i *Image) pull(directory string) error {
     resp, err := i.Client.
         R().
         SetHeader("Authorization", i.Authorization()).
-        SetHeader("Accept", strings.Join(acceptHeaders, "; ")).
+        SetHeader("Accept", strings.Join(acceptHeaders, ", ")).
         SetHeader("Accept-Encoding", "gzip").
         SetHeader("User-Agent", "docker/19.03.12 go/go1.13.10 git-commit/48a66213fe kernel/4.19.76-linuxkit os/linux arch/amd64 UpstreamClient(Docker-Client/19.03.12 \\(darwin\\))").
         Get(url)
@@ -31,7 +31,7 @@ func (i *Image) pull(directory string) error {
     }
     imageId := ""
     if resp.StatusCode() != 200 {
-        return errors.New("request manifest error")
+        return fmt.Errorf("request manifest error: %s", string(resp.Body()))
     }
     typeHeader := resp.Header().Get("Content-Type")
     switch typeHeader {
